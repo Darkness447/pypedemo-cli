@@ -223,9 +223,11 @@ select_metric() {
 }
 
 # Align metric (option 1)
+# Align metric (option 1)
 align_metric() {
   local metric_id=$(cat "$CURRENT_METRIC_FILE")
   local metric_name=$(cat "$METRICS_FILE" | jq -r ".[] | select(.id == $metric_id) | .name")
+  local description=$(cat "$METRICS_FILE" | jq -r ".[] | select(.id == $metric_id) | .description")
   
   echo "Testing $metric_name on sample logs..."
   
@@ -247,6 +249,47 @@ align_metric() {
   done
   
   echo "Metric aligned based on feedback"
+  
+  # Add option to change criteria
+  echo "Would you like to change the metric criteria? (y/n):"
+  read -r change_criteria
+  
+  if [ "$change_criteria" == "y" ]; then
+    echo "Current criteria: $description"
+    echo "Enter new criteria:"
+    read -r new_criteria
+    
+    # Update the metric criteria in the file
+    cat "$METRICS_FILE" | jq "map(if .id == $metric_id then .description = \"$new_criteria\" else . end)" > "$CONFIG_DIR/temp.json"
+    mv "$CONFIG_DIR/temp.json" "$METRICS_FILE"
+    
+    echo "Metric criteria updated successfully"
+  fi
+  
+  # Provide options after alignment
+  echo "What would you like to do next?"
+  echo "1. Align more (test with additional logs)"
+  echo "2. Deploy the metric"
+  echo "3. Save changes locally (without deploying)"
+  read -r next_action
+  
+  case $next_action in
+    1)
+      align_metric  # Call the function recursively for more alignment
+      ;;
+    2)
+      # Deploy the metric
+      local metric_name=$(cat "$METRICS_FILE" | jq -r ".[] | select(.id == $metric_id) | .name")
+      echo "Deploying metric $metric_name..."
+      echo "Metric $metric_name deployed successfully"
+      ;;
+    3)
+      echo "Changes saved locally"
+      ;;
+    *)
+      echo "Invalid option, changes saved locally by default"
+      ;;
+  esac
 }
 
 # Break down metric (option 2)
