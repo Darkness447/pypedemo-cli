@@ -96,6 +96,7 @@ list_projects() {
 }
 
 # Select project command
+# Modify the select_project command to include workflow selection
 select_project() {
   if ! is_logged_in; then
     echo "Not logged in. Use 'pype login' first."
@@ -103,6 +104,8 @@ select_project() {
   fi
 
   local project_name=$1
+  local workflow_name=$2
+  
   if [ -z "$project_name" ]; then
     echo "Error: Project name is required."
     return 1
@@ -117,6 +120,19 @@ select_project() {
 
   echo "$project_exists" > "$CURRENT_PROJECT_FILE"
   echo "Selected $project_name"
+  
+  # If workflow is specified, select it as well
+  if [ ! -z "$workflow_name" ]; then
+    # Check if workflow exists for the selected project
+    local workflow_id=$(cat "$WORKFLOWS_FILE" | jq -r ".[] | select(.project_id == $project_exists and .name == \"$workflow_name\") | .id")
+    if [ -z "$workflow_id" ]; then
+      echo "Error: Workflow '$workflow_name' not found in the selected project."
+      return 1
+    fi
+
+    echo "$workflow_id" > "$CURRENT_WORKFLOW_FILE"
+    echo "Selected workflow $workflow_name"
+  fi
 }
 
 # List workflows command
@@ -368,44 +384,24 @@ pype() {
           ;;
       esac
       ;;
-    project)
-      case "$2" in
-        select)
-          if [ "$3" == "--name" ]; then
+  project)
+    case "$2" in
+      select)
+        if [ "$3" == "--name" ] && [ ! -z "$4" ]; then
+          if [ "$5" == "--workflow" ] && [ ! -z "$6" ]; then
+            select_project "$4" "$6"
+          else
             select_project "$4"
-          else
-            echo "Usage: pype project select --name \"Project Name\""
           fi
-          ;;
-        *)
-          echo "Unknown project subcommand. Available: select"
-          ;;
-      esac
-      ;;
-    workflows)
-      case "$2" in
-        list)
-          list_workflows
-          ;;
-        *)
-          echo "Unknown workflows subcommand. Available: list"
-          ;;
-      esac
-      ;;
-    workflow)
-      case "$2" in
-        select)
-          if [ "$3" == "--name" ]; then
-            select_workflow "$4"
-          else
-            echo "Usage: pype workflow select --name \"workflow-name\""
-          fi
-          ;;
-        *)
-          echo "Unknown workflow subcommand. Available: select"
-          ;;
-      esac
-      ;;
+        else
+          echo "Usage: pype project select --name \"Project Name\" [--workflow \"workflow-name\"]"
+        fi
+        ;;
+      *)
+        echo "Unknown project subcommand. Available: select"
+        ;;
+    esac
+    ;;
     metrics)
       case "$2" in
         suggest)
