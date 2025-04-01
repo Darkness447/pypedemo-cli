@@ -239,7 +239,6 @@ select_metric() {
 }
 
 # Align metric (option 1)
-# Align metric (option 1)
 align_metric() {
   local metric_id=$(cat "$CURRENT_METRIC_FILE")
   local metric_name=$(cat "$METRICS_FILE" | jq -r ".[] | select(.id == $metric_id) | .name")
@@ -279,33 +278,40 @@ align_metric() {
     cat "$METRICS_FILE" | jq "map(if .id == $metric_id then .description = \"$new_criteria\" else . end)" > "$CONFIG_DIR/temp.json"
     mv "$CONFIG_DIR/temp.json" "$METRICS_FILE"
     
+    # Get the updated description to return it later
+    description=$new_criteria
+    
     echo "Metric criteria updated successfully"
   fi
   
-  # Provide options after alignment
-  echo "What would you like to do next?"
-  echo "1. Align more (test with additional logs)"
-  echo "2. Deploy the metric"
-  echo "3. Save changes locally (without deploying)"
-  read -r next_action
+  # Ask if they want to align more
+  echo "Would you like to align with more logs? (y/n):"
+  read -r align_more
   
-  case $next_action in
-    1)
-      align_metric  # Call the function recursively for more alignment
-      ;;
-    2)
-      # Deploy the metric
-      local metric_name=$(cat "$METRICS_FILE" | jq -r ".[] | select(.id == $metric_id) | .name")
-      echo "Deploying metric $metric_name..."
-      echo "Metric $metric_name deployed successfully"
-      ;;
-    3)
-      echo "Changes saved locally"
-      ;;
-    *)
-      echo "Invalid option, changes saved locally by default"
-      ;;
-  esac
+  if [ "$align_more" == "y" ]; then
+    align_metric  # Call the function recursively for more alignment
+  else
+    # Provide options after completing alignment
+    echo "Alignment completed. Current criteria: $description"
+    echo "What would you like to do next?"
+    echo "1. Deploy the metric"
+    echo "2. Save changes locally (without deploying)"
+    read -r next_action
+    
+    case $next_action in
+      1)
+        # Deploy the metric
+        echo "Deploying metric $metric_name..."
+        echo "Metric $metric_name deployed successfully"
+        ;;
+      2)
+        echo "Changes saved locally"
+        ;;
+      *)
+        echo "Invalid option, changes saved locally by default"
+        ;;
+    esac
+  fi
 }
 
 # Break down metric (option 2)
