@@ -239,6 +239,7 @@ select_metric() {
 }
 
 # Align metric (option 1)
+# Align metric (option 1)
 align_metric() {
   local metric_id=$(cat "$CURRENT_METRIC_FILE")
   local metric_name=$(cat "$METRICS_FILE" | jq -r ".[] | select(.id == $metric_id) | .name")
@@ -265,53 +266,36 @@ align_metric() {
   
   echo "Metric aligned based on feedback"
   
-  # Add option to change criteria
-  echo "Would you like to change the metric criteria? (y/n):"
-  read -r change_criteria
+  # Automatically generate a new criteria without asking
+  local new_criteria="Updated criteria: Evaluates response quality with improved focus on context relevance and factual accuracy"
   
-  if [ "$change_criteria" == "y" ]; then
-    echo "Current criteria: $description"
-    echo "Enter new criteria:"
-    read -r new_criteria
-    
-    # Update the metric criteria in the file
-    cat "$METRICS_FILE" | jq "map(if .id == $metric_id then .description = \"$new_criteria\" else . end)" > "$CONFIG_DIR/temp.json"
-    mv "$CONFIG_DIR/temp.json" "$METRICS_FILE"
-    
-    # Get the updated description to return it later
-    description=$new_criteria
-    
-    echo "Metric criteria updated successfully"
-  fi
+  # Update the metric criteria in the file
+  cat "$METRICS_FILE" | jq "map(if .id == $metric_id then .description = \"$new_criteria\" else . end)" > "$CONFIG_DIR/temp.json"
+  mv "$CONFIG_DIR/temp.json" "$METRICS_FILE"
   
-  # Ask if they want to align more
-  echo "Would you like to align with more logs? (y/n):"
-  read -r align_more
+  # Display the new criteria
+  echo "New demo criteria: $new_criteria"
   
-  if [ "$align_more" == "y" ]; then
-    align_metric  # Call the function recursively for more alignment
-  else
-    # Provide options after completing alignment
-    echo "Alignment completed. Current criteria: $description"
-    echo "What would you like to do next?"
-    echo "1. Deploy the metric"
-    echo "2. Save changes locally (without deploying)"
-    read -r next_action
-    
-    case $next_action in
-      1)
-        # Deploy the metric
-        echo "Deploying metric $metric_name..."
-        echo "Metric $metric_name deployed successfully"
-        ;;
-      2)
-        echo "Changes saved locally"
-        ;;
-      *)
-        echo "Invalid option, changes saved locally by default"
-        ;;
-    esac
-  fi
+  # Ask if they want to align more or accept
+  echo "Would you like to:"
+  echo "1. Align more (test with additional logs)"
+  echo "2. Accept and deploy the metric"
+  read -r next_action
+  
+  case $next_action in
+    1)
+      align_metric  # Call the function recursively for more alignment
+      ;;
+    2)
+      # Deploy the metric
+      echo "Deploying metric $metric_name..."
+      echo "Metric $metric_name deployed successfully"
+      ;;
+    *)
+      echo "Invalid option. Defaulting to accepting the metric."
+      echo "Metric $metric_name saved successfully"
+      ;;
+  esac
 }
 
 # Break down metric (option 2)
